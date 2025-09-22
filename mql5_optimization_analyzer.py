@@ -3,6 +3,7 @@
 """
 Analyseur d'Optimisations MQL5
 Analyse les résultats d'optimisation MetaTrader 5 depuis des fichiers Excel XML
+Updated: 2025-09-22 Force cache invalidation for Streamlit Cloud
 """
 
 import pandas as pd
