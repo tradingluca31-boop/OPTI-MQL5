@@ -19,6 +19,13 @@ class MQL5OptimizationAnalyzer:
         self.filtered_data = None
         self.variable_stats = {}
         self.best_optimizations = []
+        self.advanced_metrics = {}
+        self.variable_categories = {
+            'signal': ['rsi', 'ma', 'ema', 'sma', 'macd', 'bollinger', 'stoch', 'period'],
+            'risk_management': ['sl', 'tp', 'stop', 'take', 'risk', 'position', 'lot'],
+            'timing': ['hour', 'time', 'session', 'day', 'week'],
+            'filter': ['filter', 'confirm', 'trend', 'volume']
+        }
 
     def load_excel_xml(self, file_path: str):
         """Charge les données depuis un fichier Excel XML"""
@@ -111,19 +118,171 @@ class MQL5OptimizationAnalyzer:
                     'top_valeurs': []
                 }
 
-                # Top 5 des meilleures valeurs pour cette variable
-                top_values = grouped.mean().nlargest(5)
-                for value, avg_profit in top_values.items():
-                    count = grouped.get_group(value).count()
-                    self.variable_stats[var_col]['top_valeurs'].append({
+                # Calcul du score composite pour classement intelligent
+                value_scores = []
+                for value in grouped.groups.keys():
+                    group_data = grouped.get_group(value)
+                    count = len(group_data)
+                    avg_profit = group_data.mean()
+                    min_profit = group_data.min()
+                    max_profit = group_data.max()
+
+                    # Score composite : fiabilité + performance
+                    # Bonus pour les occurrences élevées + profit moyen élevé
+                    reliability_bonus = min(count / 10, 5.0)  # Bonus max 5.0 pour 100+ occurrences
+                    performance_score = avg_profit / 1000     # Normalisation du profit
+                    composite_score = performance_score + reliability_bonus
+
+                    # Calcul du R/R pour cette valeur
+                    winning_trades = group_data[group_data > 0]
+                    losing_trades = group_data[group_data < 0]
+
+                    if len(winning_trades) > 0 and len(losing_trades) > 0:
+                        avg_win = winning_trades.mean()
+                        avg_loss = abs(losing_trades.mean())
+                        rr_ratio = avg_win / avg_loss if avg_loss > 0 else 0
+                        rr_min = winning_trades.min() / abs(losing_trades.max()) if len(losing_trades) > 0 else 0
+                        rr_max = winning_trades.max() / abs(losing_trades.min()) if len(losing_trades) > 0 else 0
+                    else:
+                        rr_ratio = rr_min = rr_max = 0
+
+                    value_scores.append({
                         'valeur': value,
                         'profit_moyen': avg_profit,
+                        'profit_min': min_profit,
+                        'profit_max': max_profit,
                         'occurrences': count,
-                        'profit_total': grouped.get_group(value).sum()
+                        'profit_total': group_data.sum(),
+                        'score_composite': composite_score,
+                        'rr_ratio': rr_ratio,
+                        'rr_min': rr_min,
+                        'rr_max': rr_max
                     })
+
+                # Tri par score composite décroissant
+                value_scores.sort(key=lambda x: x['score_composite'], reverse=True)
+                self.variable_stats[var_col]['top_valeurs'] = value_scores[:5]
 
             except Exception as e:
                 print(f"[WARNING] Erreur analyse variable {var_col}: {e}")
+
+    def calculate_advanced_metrics(self):
+        """Calcule les métriques avancées de trading"""
+        if self.filtered_data is None:
+            return
+
+        # Colonnes de base
+        profit_cols = [col for col in self.filtered_data.columns if 'profit' in col.lower()]
+        dd_cols = [col for col in self.filtered_data.columns if 'drawdown' in col.lower() or 'dd' in col.lower()]
+        trades_cols = [col for col in self.filtered_data.columns if 'trades' in col.lower()]
+
+        if not profit_cols:
+            return
+
+        profit_col = profit_cols[0]
+        dd_col = dd_cols[0] if dd_cols else None
+        trades_col = trades_cols[0] if trades_cols else None
+
+        profits = self.filtered_data[profit_col]
+
+        # Métriques de base
+        total_profit = profits.sum()
+        avg_profit = profits.mean()
+        max_profit = profits.max()
+        min_profit = profits.min()
+
+        # Risk/Reward et autres métriques
+        if dd_col:
+            drawdowns = abs(self.filtered_data[dd_col])
+            max_dd = drawdowns.max()
+            avg_dd = drawdowns.mean()
+
+            # Calmar Ratio = Annual Return / Max Drawdown
+            calmar_ratio = (avg_profit * 252) / max_dd if max_dd > 0 else 0
+
+            # Recovery Factor = Total Profit / Max Drawdown
+            recovery_factor = total_profit / max_dd if max_dd > 0 else 0
+        else:
+            max_dd = 0
+            avg_dd = 0
+            calmar_ratio = 0
+            recovery_factor = 0
+
+        # Sharpe Ratio approximation
+        if len(profits) > 1:
+            returns_std = profits.std()
+            sharpe_ratio = avg_profit / returns_std if returns_std > 0 else 0
+        else:
+            sharpe_ratio = 0
+
+        # Win Rate et Profit Factor
+        winning_trades = profits[profits > 0]
+        losing_trades = profits[profits < 0]
+
+        win_rate = len(winning_trades) / len(profits) * 100 if len(profits) > 0 else 0
+
+        total_wins = winning_trades.sum() if len(winning_trades) > 0 else 0
+        total_losses = abs(losing_trades.sum()) if len(losing_trades) > 0 else 1
+        profit_factor = total_wins / total_losses if total_losses > 0 else 0
+
+        # Risk/Reward Ratio
+        avg_win = winning_trades.mean() if len(winning_trades) > 0 else 0
+        avg_loss = abs(losing_trades.mean()) if len(losing_trades) > 0 else 1
+        rr_ratio = avg_win / avg_loss if avg_loss > 0 else 0
+
+        self.advanced_metrics = {
+            'total_optimizations': len(self.filtered_data),
+            'total_profit': total_profit,
+            'average_profit': avg_profit,
+            'max_profit': max_profit,
+            'min_profit': min_profit,
+            'max_drawdown': max_dd,
+            'average_drawdown': avg_dd,
+            'win_rate': win_rate,
+            'profit_factor': profit_factor,
+            'risk_reward_ratio': rr_ratio,
+            'sharpe_ratio': sharpe_ratio,
+            'calmar_ratio': calmar_ratio,
+            'recovery_factor': recovery_factor,
+            'winning_trades': len(winning_trades),
+            'losing_trades': len(losing_trades),
+            'average_win': avg_win,
+            'average_loss': avg_loss
+        }
+
+    def categorize_variables(self):
+        """Classe les variables par catégories"""
+        if self.filtered_data is None:
+            return {}
+
+        categorized = {
+            'signal': [],
+            'risk_management': [],
+            'timing': [],
+            'filter': [],
+            'other': []
+        }
+
+        # Colonnes de résultats à exclure
+        result_keywords = ['profit', 'gain', 'drawdown', 'dd', 'trades', 'total', 'net', 'gross', 'balance', 'equity', 'result', 'pass']
+
+        for col in self.filtered_data.columns:
+            if any(keyword in col.lower() for keyword in result_keywords):
+                continue
+
+            col_lower = col.lower()
+            categorized_flag = False
+
+            for category, keywords in self.variable_categories.items():
+                if any(keyword in col_lower for keyword in keywords):
+                    categorized[category].append(col)
+                    categorized_flag = True
+                    break
+
+            if not categorized_flag:
+                categorized['other'].append(col)
+
+        return categorized
 
     def find_best_optimizations(self, top_n: int = 10):
         """Trouve les meilleures optimisations"""

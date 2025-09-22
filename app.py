@@ -176,7 +176,7 @@ def main():
                 analyze_optimizations(uploaded_file, profit_min, dd_max, top_n)
 
         except Exception as e:
-            st.error(f"❌ Erreur lors du chargement du fichier: {str(e)}")
+            st.error(f"[ERREUR] Erreur lors du chargement du fichier: {str(e)}")
 
     else:
         # Instructions d'utilisation
