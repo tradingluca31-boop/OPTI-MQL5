@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-OPTI MQL5 - Interface Web
+OPTI MQL5 V2 - Interface Web Avancée
 Application Streamlit pour analyser les optimisations MetaTrader 5
+Version 2.0 avec métriques avancées et interface à onglets
 """
 
 import streamlit as st
@@ -13,37 +14,66 @@ import json
 from mql5_optimization_analyzer import MQL5OptimizationAnalyzer
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 # Configuration de la page
 st.set_page_config(
-    page_title="OPTI MQL5 - Analyseur d'Optimisations",
+    page_title="OPTI MQL5 V2 - Analyseur Avancé",
     page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# CSS personnalisé
+# CSS personnalisé amélioré
 st.markdown("""
 <style>
     .main-header {
         font-size: 3rem;
         color: #1f77b4;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
-    .success-box {
-        background-color: #d4edda;
-        border: 1px solid #c3e6cb;
-        border-radius: 5px;
-        padding: 1rem;
-        margin: 1rem 0;
+    .version-badge {
+        background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.8rem;
+        margin-left: 1rem;
     }
     .metric-card {
-        background-color: #f8f9fa;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        color: white;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    .metric-value {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    .metric-label {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    .category-header {
+        background: linear-gradient(90deg, #11998e, #38ef7d);
+        color: white;
+        padding: 1rem;
         border-radius: 10px;
+        margin: 1rem 0;
+        font-weight: bold;
+    }
+    .variable-card {
+        background: #f8f9fa;
+        border-left: 4px solid #1f77b4;
         padding: 1rem;
         margin: 0.5rem 0;
-        border-left: 4px solid #1f77b4;
+        border-radius: 5px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -110,101 +140,108 @@ def parse_mt5_xml(file_path):
     return df
 
 def main():
-    # En-tête
-    st.markdown('<h1 class="main-header">🚀 OPTI MQL5</h1>', unsafe_allow_html=True)
-    st.markdown("### Analyseur d'Optimisations MetaTrader 5")
+    # En-tête avec badge version
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.markdown('<h1 class="main-header">🚀 OPTI MQL5</h1>', unsafe_allow_html=True)
+    with col2:
+        st.markdown('<div class="version-badge">V2.0 AVANCÉ</div>', unsafe_allow_html=True)
 
+    st.markdown("### Analyseur Avancé d'Optimisations MetaTrader 5")
     st.markdown("---")
 
-    # Sidebar pour les paramètres
-    st.sidebar.header("⚙️ Paramètres d'Analyse")
+    # Sidebar améliorée
+    with st.sidebar:
+        st.header("⚙️ Configuration Avancée")
 
-    profit_min = st.sidebar.number_input(
-        "Profit minimum (€)",
-        min_value=0,
-        max_value=50000,
-        value=7000,
-        step=500,
-        help="Seuil minimum de profit pour filtrer les optimisations"
-    )
+        profit_min = st.number_input(
+            "💰 Profit minimum (€)",
+            min_value=0,
+            max_value=100000,
+            value=7000,
+            step=500,
+            help="Seuil minimum de profit pour filtrer les optimisations"
+        )
 
-    dd_max = st.sidebar.number_input(
-        "Drawdown maximum (%)",
-        min_value=0.0,
-        max_value=100.0,
-        value=7.0,
-        step=0.5,
-        help="Seuil maximum de drawdown acceptable"
-    )
+        dd_max = st.number_input(
+            "📉 Drawdown maximum (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=7.0,
+            step=0.5,
+            help="Seuil maximum de drawdown acceptable"
+        )
 
-    top_n = st.sidebar.slider(
-        "Nombre de meilleures optimisations",
-        min_value=5,
-        max_value=50,
-        value=15,
-        help="Combien d'optimisations afficher dans le top"
-    )
+        top_n = st.slider(
+            "🏆 Top optimisations",
+            min_value=5,
+            max_value=100,
+            value=20,
+            help="Nombre d'optimisations à afficher dans le top"
+        )
+
+        st.markdown("---")
+        st.markdown("### 📊 Métriques Avancées")
+        show_sharpe = st.checkbox("Sharpe Ratio", value=True)
+        show_calmar = st.checkbox("Calmar Ratio", value=True)
+        show_recovery = st.checkbox("Recovery Factor", value=True)
+        show_rr = st.checkbox("Risk/Reward Ratio", value=True)
 
     # Upload de fichier
-    st.header("📁 Uploadez votre fichier d'optimisation")
+    st.header("📁 Upload de votre fichier d'optimisation")
 
     uploaded_file = st.file_uploader(
-        "Choisissez votre fichier Excel/CSV d'optimisation MetaTrader 5",
+        "Choisissez votre fichier Excel/CSV/XML d'optimisation MetaTrader 5",
         type=['xlsx', 'xls', 'csv', 'xml'],
         help="Formats supportés: Excel (.xlsx, .xls), CSV (.csv), XML (.xml)"
     )
 
     if uploaded_file is not None:
         try:
-            # Affichage des informations du fichier
-            file_details = {
-                "Nom": uploaded_file.name,
-                "Taille": f"{uploaded_file.size:,} bytes",
-                "Type": uploaded_file.type
-            }
-
+            # Affichage des informations du fichier avec style
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.info(f"📄 **Fichier:** {file_details['Nom']}")
+                st.info(f"📄 **{uploaded_file.name}**")
             with col2:
-                st.info(f"💾 **Taille:** {file_details['Taille']}")
+                st.info(f"💾 **{uploaded_file.size:,} bytes**")
             with col3:
-                st.info(f"🔧 **Type:** {file_details['Type']}")
+                st.info(f"🔧 **{uploaded_file.type}**")
 
-            # Bouton d'analyse
-            if st.button("🚀 ANALYSER LES OPTIMISATIONS", type="primary"):
-                analyze_optimizations(uploaded_file, profit_min, dd_max, top_n)
+            # Bouton d'analyse avec style
+            if st.button("🚀 ANALYSER LES OPTIMISATIONS", type="primary", use_container_width=True):
+                analyze_optimizations_v2(uploaded_file, profit_min, dd_max, top_n,
+                                       show_sharpe, show_calmar, show_recovery, show_rr)
 
         except Exception as e:
-            st.error(f"[ERREUR] Erreur lors du chargement du fichier: {str(e)}")
+            st.error(f"[ERREUR] Erreur lors du chargement: {str(e)}")
 
     else:
-        # Instructions d'utilisation
-        st.info("👆 Uploadez votre fichier pour commencer l'analyse")
+        # Instructions d'utilisation améliorées
+        st.info("👆 Uploadez votre fichier d'optimisation pour commencer l'analyse avancée")
 
-        with st.expander("ℹ️ Comment exporter depuis MetaTrader 5"):
+        with st.expander("📖 Guide d'utilisation V2"):
+            st.markdown("""
+            **🆕 Nouvelles fonctionnalités V2 :**
+            - **Métriques avancées** : Sharpe, Calmar, Recovery Factor, R/R
+            - **Interface à onglets** organisée par catégories
+            - **Analyses détaillées** par type de variable
+            - **Visualisations avancées** et graphiques interactifs
+            - **Export complet** de toutes les données
+            """)
+
+        with st.expander("ℹ️ Export depuis MetaTrader 5"):
             st.markdown("""
             **Étapes pour exporter vos optimisations :**
-            1. Dans MetaTrader 5, allez dans **Strategy Tester**
+            1. Dans MetaTrader 5 → **Strategy Tester**
             2. Lancez votre optimisation
-            3. Dans l'onglet **Optimization Results**, clic droit → **Save**
-            4. Sauvegardez au format Excel (.xlsx) ou CSV
-            5. Uploadez le fichier ici 👆
+            3. Onglet **Optimization Results** → Clic droit → **Save**
+            4. Format recommandé : Excel (.xlsx)
+            5. Uploadez ici pour l'analyse V2
             """)
 
-        with st.expander("📊 Que fait l'analyseur ?"):
-            st.markdown(f"""
-            **L'analyseur va automatiquement :**
-            - ✅ Filtrer les optimisations avec profit ≥ {profit_min}€
-            - ✅ Exclure celles avec drawdown > {dd_max}%
-            - ✅ Analyser chaque variable (RSI, SL, TP, etc.)
-            - ✅ Calculer les statistiques détaillées
-            - ✅ Classer les {top_n} meilleures configurations
-            - ✅ Générer des graphiques interactifs
-            """)
-
-def analyze_optimizations(uploaded_file, profit_min, dd_max, top_n):
-    """Analyse les optimisations uploadées"""
+def analyze_optimizations_v2(uploaded_file, profit_min, dd_max, top_n,
+                            show_sharpe, show_calmar, show_recovery, show_rr):
+    """Analyse avancée des optimisations V2"""
 
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -214,217 +251,319 @@ def analyze_optimizations(uploaded_file, profit_min, dd_max, top_n):
         status_text.text("📂 Chargement du fichier...")
         progress_bar.progress(20)
 
-        # Lecture du fichier
+        # Lecture du fichier avec gestion XML améliorée
         if uploaded_file.name.endswith('.csv'):
             df = pd.read_csv(uploaded_file)
         elif uploaded_file.name.endswith('.xml'):
-            # Traitement spécial pour les fichiers XML MetaTrader 5
-            st.info("🔧 Traitement du fichier XML MetaTrader 5...")
+            st.info("🔧 Traitement spécialisé du fichier XML MetaTrader 5...")
 
-            # Sauvegarder temporairement le fichier uploadé
             with open("temp_file.xml", "wb") as f:
                 f.write(uploaded_file.getvalue())
 
-            # Essayer différentes méthodes de lecture
-            df = None
-            methods_tried = []
-
-            # Méthode 1: pandas avec openpyxl
             try:
                 df = pd.read_excel("temp_file.xml", engine='openpyxl')
-                methods_tried.append("✅ openpyxl")
-            except Exception as e1:
-                methods_tried.append(f"❌ openpyxl: {str(e1)[:50]}...")
-
-            # Méthode 2: pandas standard
-            if df is None:
-                try:
-                    df = pd.read_excel("temp_file.xml")
-                    methods_tried.append("✅ pandas standard")
-                except Exception as e2:
-                    methods_tried.append(f"❌ pandas standard: {str(e2)[:50]}...")
-
-            # Méthode 3: parser XML manuel
-            if df is None:
+            except:
                 try:
                     df = parse_mt5_xml("temp_file.xml")
-                    methods_tried.append("✅ parser XML manuel")
-                except Exception as e3:
-                    methods_tried.append(f"❌ parser manuel: {str(e3)[:50]}...")
-
-            # Afficher les méthodes essayées
-            with st.expander("🔍 Méthodes de lecture testées"):
-                for method in methods_tried:
-                    st.write(method)
-
-            # Nettoyer le fichier temporaire
-            import os
-            if os.path.exists("temp_file.xml"):
-                os.remove("temp_file.xml")
-
-            if df is None:
-                st.error("❌ Impossible de lire le fichier XML. Essayez de l'exporter en format Excel (.xlsx) depuis MetaTrader 5.")
-                return
+                except Exception as e:
+                    st.error(f"[ERREUR] Impossible de lire le XML: {e}")
+                    return
+            finally:
+                import os
+                if os.path.exists("temp_file.xml"):
+                    os.remove("temp_file.xml")
         else:
             df = pd.read_excel(uploaded_file)
 
         progress_bar.progress(40)
 
         # Étape 2: Analyse
-        status_text.text("🔍 Analyse des données...")
+        status_text.text("🔍 Analyse avancée des données...")
 
         analyzer = MQL5OptimizationAnalyzer()
         analyzer.data = df
+        analyzer.filter_profitable_optimizations(min_profit=profit_min, max_drawdown=dd_max)
 
         progress_bar.progress(60)
 
-        # Filtrage
-        analyzer.filter_profitable_optimizations(min_profit=profit_min, max_drawdown=dd_max)
+        # Calculs avancés
+        analyzer.analyze_variables()
+
+        # Vérification de compatibilité avec Streamlit Cloud
+        if hasattr(analyzer, 'calculate_advanced_metrics'):
+            analyzer.calculate_advanced_metrics()
+        else:
+            st.warning("⚠️ Métriques avancées temporairement indisponibles (problème cache Streamlit Cloud)")
+            # Création manuelle des métriques de base
+            analyzer.advanced_metrics = {
+                'total_optimizations': len(analyzer.filtered_data) if analyzer.filtered_data is not None else 0,
+                'total_profit': 0,
+                'average_profit': 0,
+                'max_profit': 0,
+                'min_profit': 0,
+                'max_drawdown': 0,
+                'win_rate': 0,
+                'profit_factor': 0,
+                'risk_reward_ratio': 0,
+                'sharpe_ratio': 0,
+                'calmar_ratio': 0,
+                'recovery_factor': 0
+            }
+
+        analyzer.find_best_optimizations(top_n=top_n)
 
         progress_bar.progress(80)
 
-        # Analyse des variables
-        analyzer.analyze_variables()
-        analyzer.find_best_optimizations(top_n=top_n)
+        # Catégorisation
+        categorized_vars = analyzer.categorize_variables()
 
         progress_bar.progress(100)
-        status_text.text("✅ Analyse terminée!")
+        status_text.text("✅ Analyse V2 terminée!")
 
-        # Affichage des résultats
-        display_results(analyzer, profit_min, dd_max)
+        # Affichage des résultats avec onglets
+        display_results_v2(analyzer, categorized_vars, profit_min, dd_max,
+                          show_sharpe, show_calmar, show_recovery, show_rr)
 
     except Exception as e:
-        st.error(f"❌ Erreur durant l'analyse: {str(e)}")
+        st.error(f"[ERREUR] Erreur durant l'analyse V2: {str(e)}")
         st.exception(e)
 
-def display_results(analyzer, profit_min, dd_max):
-    """Affiche les résultats de l'analyse"""
+def display_results_v2(analyzer, categorized_vars, profit_min, dd_max,
+                      show_sharpe, show_calmar, show_recovery, show_rr):
+    """Affichage des résultats V2 avec onglets"""
 
     st.markdown("---")
-    st.header("📊 Résultats de l'Analyse")
+    st.header("📊 Résultats de l'Analyse V2")
 
-    # Résumé général
+    # Onglets principaux
+    tab_overview, tab_signals, tab_risk, tab_timing, tab_advanced = st.tabs([
+        "📈 Vue d'ensemble",
+        "🎯 Variables Signal",
+        "💰 Gestion des Risques",
+        "⏰ Variables Timing",
+        "📊 Analyse Complète"
+    ])
+
+    with tab_overview:
+        display_overview(analyzer, profit_min, dd_max)
+
+    with tab_signals:
+        display_category_analysis(analyzer, categorized_vars['signal'], "Variables de Signal", "🎯")
+
+    with tab_risk:
+        display_category_analysis(analyzer, categorized_vars['risk_management'], "Gestion des Risques", "💰")
+
+    with tab_timing:
+        display_category_analysis(analyzer, categorized_vars['timing'], "Variables de Timing", "⏰")
+
+    with tab_advanced:
+        display_advanced_metrics(analyzer, show_sharpe, show_calmar, show_recovery, show_rr)
+
+def display_overview(analyzer, profit_min, dd_max):
+    """Affichage de la vue d'ensemble"""
+
     total_opts = len(analyzer.data) if analyzer.data is not None else 0
     profitable_opts = len(analyzer.filtered_data) if analyzer.filtered_data is not None else 0
     success_rate = (profitable_opts / total_opts * 100) if total_opts > 0 else 0
 
-    # Métriques principales
+    # Métriques principales avec style
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        st.metric("📈 Total Optimisations", f"{total_opts:,}")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{total_opts:,}</div>
+            <div class="metric-label">Total Optimisations</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col2:
-        st.metric("✅ Profitables", f"{profitable_opts:,}")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{profitable_opts:,}</div>
+            <div class="metric-label">Profitables</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col3:
-        st.metric("🎯 Taux de Succès", f"{success_rate:.1f}%")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{success_rate:.1f}%</div>
+            <div class="metric-label">Taux de Succès</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     with col4:
-        profit_cols = [col for col in analyzer.data.columns if 'profit' in col.lower() or 'gain' in col.lower()]
-        if profit_cols and analyzer.filtered_data is not None and len(analyzer.filtered_data) > 0:
-            max_profit = analyzer.filtered_data[profit_cols[0]].max()
-            st.metric("💰 Meilleur Profit", f"{max_profit:,.2f}€")
+        if analyzer.advanced_metrics:
+            max_profit = analyzer.advanced_metrics.get('max_profit', 0)
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-value">{max_profit:,.0f}€</div>
+                <div class="metric-label">Meilleur Profit</div>
+            </div>
+            """, unsafe_allow_html=True)
 
     if profitable_opts == 0:
         st.warning(f"⚠️ Aucune optimisation ne respecte vos critères (profit ≥ {profit_min}€, DD ≤ {dd_max}%)")
         return
 
-    # Graphiques
-    st.subheader("📊 Visualisations")
-
-    # Graphique de distribution des profits
+    # Graphique de distribution
     if analyzer.filtered_data is not None:
-        profit_cols = [col for col in analyzer.filtered_data.columns if 'profit' in col.lower() or 'gain' in col.lower()]
+        profit_cols = [col for col in analyzer.filtered_data.columns if 'profit' in col.lower()]
         if profit_cols:
-            fig_hist = px.histogram(
+            fig = px.histogram(
                 analyzer.filtered_data,
                 x=profit_cols[0],
-                title="Distribution des Profits",
-                nbins=20,
+                title="📊 Distribution des Profits",
+                nbins=30,
                 color_discrete_sequence=['#1f77b4']
             )
-            fig_hist.update_layout(xaxis_title="Profit (€)", yaxis_title="Nombre d'optimisations")
-            st.plotly_chart(fig_hist, use_container_width=True)
+            fig.update_layout(
+                xaxis_title="Profit (€)",
+                yaxis_title="Nombre d'optimisations",
+                template="plotly_white"
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
-    # Analyse par variables
-    if analyzer.variable_stats:
-        st.subheader("🔍 Analyse par Variables")
+def display_category_analysis(analyzer, variables, category_name, icon):
+    """Affichage de l'analyse par catégorie"""
 
-        # Sélection de variable à analyser
-        var_names = list(analyzer.variable_stats.keys())
-        selected_var = st.selectbox("Choisissez une variable à analyser:", var_names)
+    if not variables:
+        st.info(f"Aucune variable {category_name.lower()} détectée dans ce fichier")
+        return
 
-        if selected_var:
-            var_stats = analyzer.variable_stats[selected_var]
+    st.markdown(f'<div class="category-header">{icon} {category_name} ({len(variables)} variables)</div>',
+                unsafe_allow_html=True)
 
-            # Statistiques de la variable
-            col1, col2 = st.columns(2)
+    for var in variables:
+        if var in analyzer.variable_stats:
+            stats = analyzer.variable_stats[var]
 
-            with col1:
-                st.markdown(f"""
-                **📊 Statistiques pour {selected_var}:**
-                - Valeurs uniques testées: **{var_stats['valeurs_uniques']}**
-                - Profit minimum: **{var_stats['profit_min']:.2f}€**
-                - Profit maximum: **{var_stats['profit_max']:.2f}€**
-                - Profit moyen: **{var_stats['profit_moyen']:.2f}€**
-                """)
+            with st.expander(f"📊 {var}"):
+                col1, col2 = st.columns(2)
 
-            with col2:
-                # Top 5 des valeurs
-                if var_stats['top_valeurs']:
-                    st.markdown("**🏆 Top 5 des meilleures valeurs:**")
-                    for i, top_val in enumerate(var_stats['top_valeurs'][:5], 1):
-                        st.write(f"{i}. **{top_val['valeur']}** → {top_val['profit_moyen']:.2f}€ (×{top_val['occurrences']})")
+                with col1:
+                    st.markdown(f"""
+                    **Statistiques générales :**
+                    - Valeurs uniques: {stats['valeurs_uniques']}
+                    - Profit min: {stats['profit_min']:.2f}€
+                    - Profit max: {stats['profit_max']:.2f}€
+                    - Profit moyen: {stats['profit_moyen']:.2f}€
+                    """)
 
-    # Meilleures optimisations
-    st.subheader("🏆 Meilleures Optimisations")
+                with col2:
+                    if stats['top_valeurs']:
+                        st.markdown("**🏆 Top 5 valeurs :**")
+                        for i, top_val in enumerate(stats['top_valeurs'][:5], 1):
+                            # Format d'affichage amélioré : Variable + Valeur
+                            var_display = f"{var} {top_val['valeur']}"
+                            st.write(f"{i}. **{var_display}** → {top_val['profit_moyen']:.2f}€ (×{top_val['occurrences']})")
 
+                            # Affichage des profits min/moyen/max pour cette valeur spécifique
+                            if 'profit_min' in top_val and 'profit_max' in top_val:
+                                st.caption(f"   📊 Min: {top_val['profit_min']:.2f}€ | Moyen: {top_val['profit_moyen']:.2f}€ | Max: {top_val['profit_max']:.2f}€")
+
+                            # Affichage du R/R (toujours visible maintenant)
+                            if 'rr_ratio' in top_val:
+                                rr_info = f"   🎯 R/R Moyen: {top_val['rr_ratio']:.2f}"
+                                if 'rr_min' in top_val and 'rr_max' in top_val:
+                                    rr_info += f" | Min: {top_val['rr_min']:.2f} | Max: {top_val['rr_max']:.2f}"
+                                st.caption(rr_info)
+                            else:
+                                st.caption("   🎯 R/R: Non calculé")
+
+def display_advanced_metrics(analyzer, show_sharpe, show_calmar, show_recovery, show_rr):
+    """Affichage des métriques avancées"""
+
+    if not analyzer.advanced_metrics:
+        st.warning("Métriques avancées non disponibles")
+        return
+
+    metrics = analyzer.advanced_metrics
+
+    st.markdown('<div class="category-header">📊 Métriques Avancées de Trading</div>', unsafe_allow_html=True)
+
+    # Métriques de performance
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+        st.metric("💰 Profit Total", f"{metrics['total_profit']:,.2f}€")
+        st.metric("📈 Win Rate", f"{metrics['win_rate']:.1f}%")
+
+    with col2:
+        st.metric("🎯 Profit Factor", f"{metrics['profit_factor']:.2f}")
+        if show_rr:
+            st.metric("⚖️ Risk/Reward", f"{metrics['risk_reward_ratio']:.2f}")
+
+    with col3:
+        if show_sharpe:
+            st.metric("📊 Sharpe Ratio", f"{metrics['sharpe_ratio']:.3f}")
+        st.metric("📉 Max Drawdown", f"{metrics['max_drawdown']:.2f}%")
+
+    with col4:
+        if show_calmar:
+            st.metric("📈 Calmar Ratio", f"{metrics['calmar_ratio']:.3f}")
+        if show_recovery:
+            st.metric("🔄 Recovery Factor", f"{metrics['recovery_factor']:.2f}")
+
+    # Graphiques de distribution des gains/pertes
+    if analyzer.filtered_data is not None:
+        profit_cols = [col for col in analyzer.filtered_data.columns if 'profit' in col.lower()]
+        if profit_cols:
+            profits = analyzer.filtered_data[profit_cols[0]]
+
+            fig = make_subplots(
+                rows=1, cols=2,
+                subplot_titles=('Distribution Profits/Pertes', 'Analyse Win/Loss'),
+                specs=[[{"secondary_y": False}, {"type": "pie"}]]
+            )
+
+            # Histogramme
+            fig.add_trace(
+                go.Histogram(x=profits, nbinsx=30, name="Distribution", marker_color='lightblue'),
+                row=1, col=1
+            )
+
+            # Pie chart Win/Loss
+            win_count = len(profits[profits > 0])
+            loss_count = len(profits[profits <= 0])
+
+            fig.add_trace(
+                go.Pie(
+                    labels=['Gains', 'Pertes'],
+                    values=[win_count, loss_count],
+                    marker_colors=['lightgreen', 'lightcoral']
+                ),
+                row=1, col=2
+            )
+
+            fig.update_layout(height=400, showlegend=False, template="plotly_white")
+            st.plotly_chart(fig, use_container_width=True)
+
+    # Tableau des meilleures optimisations
     if analyzer.best_optimizations:
-        # Tableau des meilleures optimisations
-        best_df = pd.DataFrame(analyzer.best_optimizations)
+        st.subheader("🏆 Top Optimisations")
 
-        # Formatage pour l'affichage
+        best_df = pd.DataFrame(analyzer.best_optimizations)
         if 'profit' in best_df.columns:
             best_df['profit'] = best_df['profit'].apply(lambda x: f"{x:,.2f}€")
 
-        st.dataframe(
-            best_df,
-            use_container_width=True,
-            height=400
-        )
+        st.dataframe(best_df, use_container_width=True, height=400)
 
         # Boutons de téléchargement
         col1, col2 = st.columns(2)
-
         with col1:
-            # Téléchargement CSV
             csv = best_df.to_csv(index=False)
-            st.download_button(
-                label="📥 Télécharger CSV",
-                data=csv,
-                file_name="meilleures_optimisations.csv",
-                mime="text/csv"
-            )
+            st.download_button("📥 CSV", csv, "optimisations_v2.csv", "text/csv")
 
         with col2:
-            # Téléchargement JSON
             json_data = {
-                'variable_stats': analyzer.variable_stats,
+                'advanced_metrics': analyzer.advanced_metrics,
                 'best_optimizations': analyzer.best_optimizations,
-                'summary': {
-                    'total_optimizations': total_opts,
-                    'profitable_optimizations': profitable_opts,
-                    'success_rate': success_rate
-                }
+                'variable_stats': analyzer.variable_stats
             }
             json_str = json.dumps(json_data, ensure_ascii=False, indent=2, default=str)
-            st.download_button(
-                label="📥 Télécharger JSON",
-                data=json_str,
-                file_name="analyse_complete.json",
-                mime="application/json"
-            )
+            st.download_button("📥 JSON Complet", json_str, "analyse_v2.json", "application/json")
 
 if __name__ == "__main__":
     main()
