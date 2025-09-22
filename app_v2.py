@@ -288,7 +288,28 @@ def analyze_optimizations_v2(uploaded_file, profit_min, dd_max, top_n,
 
         # Calculs avancés
         analyzer.analyze_variables()
-        analyzer.calculate_advanced_metrics()
+
+        # Vérification de compatibilité avec Streamlit Cloud
+        if hasattr(analyzer, 'calculate_advanced_metrics'):
+            analyzer.calculate_advanced_metrics()
+        else:
+            st.warning("⚠️ Métriques avancées temporairement indisponibles (problème cache Streamlit Cloud)")
+            # Création manuelle des métriques de base
+            analyzer.advanced_metrics = {
+                'total_optimizations': len(analyzer.filtered_data) if analyzer.filtered_data is not None else 0,
+                'total_profit': 0,
+                'average_profit': 0,
+                'max_profit': 0,
+                'min_profit': 0,
+                'max_drawdown': 0,
+                'win_rate': 0,
+                'profit_factor': 0,
+                'risk_reward_ratio': 0,
+                'sharpe_ratio': 0,
+                'calmar_ratio': 0,
+                'recovery_factor': 0
+            }
+
         analyzer.find_best_optimizations(top_n=top_n)
 
         progress_bar.progress(80)
