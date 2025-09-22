@@ -442,12 +442,14 @@ def display_category_analysis(analyzer, variables, category_name, icon):
                             if 'profit_min' in top_val and 'profit_max' in top_val:
                                 st.caption(f"   📊 Min: {top_val['profit_min']:.2f}€ | Moyen: {top_val['profit_moyen']:.2f}€ | Max: {top_val['profit_max']:.2f}€")
 
-                            # Affichage du R/R si disponible
-                            if 'rr_ratio' in top_val and top_val['rr_ratio'] > 0:
+                            # Affichage du R/R (toujours visible maintenant)
+                            if 'rr_ratio' in top_val:
                                 rr_info = f"   🎯 R/R Moyen: {top_val['rr_ratio']:.2f}"
                                 if 'rr_min' in top_val and 'rr_max' in top_val:
                                     rr_info += f" | Min: {top_val['rr_min']:.2f} | Max: {top_val['rr_max']:.2f}"
                                 st.caption(rr_info)
+                            else:
+                                st.caption("   🎯 R/R: Non calculé")
 
 def display_advanced_metrics(analyzer, show_sharpe, show_calmar, show_recovery, show_rr):
     """Affichage des métriques avancées"""

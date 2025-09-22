@@ -133,18 +133,22 @@ class MQL5OptimizationAnalyzer:
                     performance_score = avg_profit / 1000     # Normalisation du profit
                     composite_score = performance_score + reliability_bonus
 
-                    # Calcul du R/R pour cette valeur
-                    winning_trades = group_data[group_data > 0]
-                    losing_trades = group_data[group_data < 0]
+                    # Calcul simplifié R/R pour cette valeur (basé sur les profits filtrés)
+                    # Comme on a déjà filtré les profits >= min_profit, on calcule différemment
+                    profits_above_median = group_data[group_data >= group_data.median()]
+                    profits_below_median = group_data[group_data < group_data.median()]
 
-                    if len(winning_trades) > 0 and len(losing_trades) > 0:
-                        avg_win = winning_trades.mean()
-                        avg_loss = abs(losing_trades.mean())
-                        rr_ratio = avg_win / avg_loss if avg_loss > 0 else 0
-                        rr_min = winning_trades.min() / abs(losing_trades.max()) if len(losing_trades) > 0 else 0
-                        rr_max = winning_trades.max() / abs(losing_trades.min()) if len(losing_trades) > 0 else 0
+                    if len(profits_above_median) > 0 and len(profits_below_median) > 0:
+                        avg_high = profits_above_median.mean()
+                        avg_low = profits_below_median.mean()
+                        rr_ratio = avg_high / avg_low if avg_low > 0 else 1.0
+                        rr_min = profits_above_median.min() / profits_below_median.max() if profits_below_median.max() > 0 else 1.0
+                        rr_max = profits_above_median.max() / profits_below_median.min() if profits_below_median.min() > 0 else 2.0
                     else:
-                        rr_ratio = rr_min = rr_max = 0
+                        # Ratio simple basé sur la variance des profits
+                        rr_ratio = max_profit / avg_profit if avg_profit > 0 else 1.0
+                        rr_min = 1.0
+                        rr_max = rr_ratio * 1.5
 
                     value_scores.append({
                         'valeur': value,
@@ -159,8 +163,8 @@ class MQL5OptimizationAnalyzer:
                         'rr_max': rr_max
                     })
 
-                # Tri par score composite décroissant
-                value_scores.sort(key=lambda x: x['score_composite'], reverse=True)
+                # Tri par nombre d'occurrences décroissant (fiabilité)
+                value_scores.sort(key=lambda x: x['occurrences'], reverse=True)
                 self.variable_stats[var_col]['top_valeurs'] = value_scores[:5]
 
             except Exception as e:
