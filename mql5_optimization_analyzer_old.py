@@ -39,7 +39,7 @@ class MQL5OptimizationAnalyzer:
             return
 
         # Recherche automatique des colonnes profit et drawdown
-        profit_cols = [col for col in self.data.columns if 'profit' in col.lower() or 'gain' in col.lower() or 'resultat' in col.lower()]
+        profit_cols = [col for col in self.data.columns if 'profit' in col.lower() or 'gain' in col.lower() or 'résultat' in col.lower()]
         dd_cols = [col for col in self.data.columns if 'drawdown' in col.lower() or 'dd' in col.lower() or 'perte' in col.lower()]
 
         if not profit_cols:
@@ -69,7 +69,7 @@ class MQL5OptimizationAnalyzer:
     def analyze_variables(self):
         """Analyse les variables d'optimisation et calcule les statistiques"""
         if self.filtered_data is None or len(self.filtered_data) == 0:
-            print("[ERREUR] Aucune donnee filtree disponible")
+            print("❌ Aucune donnée filtrée disponible")
             return
 
         # Recherche des colonnes de variables (exclut les colonnes de résultats)
@@ -80,14 +80,14 @@ class MQL5OptimizationAnalyzer:
             if not any(keyword in col.lower() for keyword in result_keywords):
                 variable_cols.append(col)
 
-        print(f"[INFO] Variables detectees: {variable_cols}")
+        print(f"🔍 Variables détectées: {variable_cols}")
 
         # Trouve la colonne profit pour les calculs
-        profit_cols = [col for col in self.filtered_data.columns if 'profit' in col.lower() or 'gain' in col.lower() or 'resultat' in col.lower()]
+        profit_cols = [col for col in self.filtered_data.columns if 'profit' in col.lower() or 'gain' in col.lower() or 'résultat' in col.lower()]
         profit_col = profit_cols[0] if profit_cols else None
 
         if not profit_col:
-            print("[ERREUR] Colonne profit non trouvee pour l'analyse")
+            print("❌ Colonne profit non trouvée pour l'analyse")
             return
 
         # Analyse chaque variable
@@ -123,20 +123,20 @@ class MQL5OptimizationAnalyzer:
                     })
 
             except Exception as e:
-                print(f"[WARNING] Erreur analyse variable {var_col}: {e}")
+                print(f"⚠️ Erreur analyse variable {var_col}: {e}")
 
     def find_best_optimizations(self, top_n: int = 10):
         """Trouve les meilleures optimisations"""
         if self.filtered_data is None:
-            print("[ERREUR] Aucune donnee filtree disponible")
+            print("❌ Aucune donnée filtrée disponible")
             return
 
         # Trouve la colonne profit
-        profit_cols = [col for col in self.filtered_data.columns if 'profit' in col.lower() or 'gain' in col.lower() or 'resultat' in col.lower()]
+        profit_cols = [col for col in self.filtered_data.columns if 'profit' in col.lower() or 'gain' in col.lower() or 'résultat' in col.lower()]
         profit_col = profit_cols[0] if profit_cols else None
 
         if not profit_col:
-            print("[ERREUR] Colonne profit non trouvee")
+            print("❌ Colonne profit non trouvée")
             return
 
         # Trie par profit décroissant
@@ -161,41 +161,41 @@ class MQL5OptimizationAnalyzer:
             f.write("=" * 80 + "\n\n")
 
             # Résumé général
-            f.write("RESUME GENERAL\n")
+            f.write("📊 RÉSUMÉ GÉNÉRAL\n")
             f.write("-" * 40 + "\n")
             if self.data is not None:
                 f.write(f"• Total optimisations: {len(self.data)}\n")
             if self.filtered_data is not None:
-                f.write(f"• Optimisations profitables (>7000 euros, <7% DD): {len(self.filtered_data)}\n")
+                f.write(f"• Optimisations profitables (>7000€, <7% DD): {len(self.filtered_data)}\n")
                 if len(self.data) > 0:
                     success_rate = (len(self.filtered_data) / len(self.data)) * 100
-                    f.write(f"• Taux de succes: {success_rate:.1f}%\n")
+                    f.write(f"• Taux de succès: {success_rate:.1f}%\n")
             f.write("\n")
 
             # Analyse par variables
-            f.write("ANALYSE PAR VARIABLES\n")
+            f.write("🔍 ANALYSE PAR VARIABLES\n")
             f.write("-" * 40 + "\n")
             for var_name, stats in self.variable_stats.items():
-                f.write(f"\n[{var_name}]\n")
-                f.write(f"   • Valeurs uniques testees: {stats['valeurs_uniques']}\n")
-                f.write(f"   • Profit minimum: {stats['profit_min']:.2f} euros\n")
-                f.write(f"   • Profit maximum: {stats['profit_max']:.2f} euros\n")
-                f.write(f"   • Profit moyen: {stats['profit_moyen']:.2f} euros\n")
+                f.write(f"\n🎯 {var_name}\n")
+                f.write(f"   • Valeurs uniques testées: {stats['valeurs_uniques']}\n")
+                f.write(f"   • Profit minimum: {stats['profit_min']:.2f}€\n")
+                f.write(f"   • Profit maximum: {stats['profit_max']:.2f}€\n")
+                f.write(f"   • Profit moyen: {stats['profit_moyen']:.2f}€\n")
 
                 f.write(f"   • Top 5 valeurs:\n")
                 for i, top_val in enumerate(stats['top_valeurs'], 1):
-                    f.write(f"     {i}. {top_val['valeur']} -> {top_val['profit_moyen']:.2f} euros (x{top_val['occurrences']})\n")
+                    f.write(f"     {i}. {top_val['valeur']} → {top_val['profit_moyen']:.2f}€ (×{top_val['occurrences']})\n")
 
             # Meilleures optimisations
-            f.write(f"\nTOP {len(self.best_optimizations)} MEILLEURES OPTIMISATIONS\n")
+            f.write(f"\n🏆 TOP {len(self.best_optimizations)} MEILLEURES OPTIMISATIONS\n")
             f.write("-" * 40 + "\n")
             for i, opt in enumerate(self.best_optimizations, 1):
-                f.write(f"\n#{i} - Profit: {opt['profit']:.2f} euros\n")
+                f.write(f"\n#{i} - Profit: {opt['profit']:.2f}€\n")
                 for key, value in opt.items():
                     if key != 'profit':
                         f.write(f"   {key}: {value}\n")
 
-        print(f"[OK] Rapport genere: {output_file}")
+        print(f"📄 Rapport généré: {output_file}")
 
     def save_json_data(self, output_file: str = "optimisations_data.json"):
         """Sauvegarde les données en JSON pour usage ultérieur"""
@@ -211,7 +211,7 @@ class MQL5OptimizationAnalyzer:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(data_export, f, ensure_ascii=False, indent=2, default=str)
 
-        print(f"[OK] Donnees sauvegardees: {output_file}")
+        print(f"💾 Données sauvegardées: {output_file}")
 
 
 def main():
@@ -219,39 +219,39 @@ def main():
     analyzer = MQL5OptimizationAnalyzer()
 
     # Instructions d'utilisation
-    print("[INFO] ANALYSEUR D'OPTIMISATIONS MQL5")
+    print("🚀 ANALYSEUR D'OPTIMISATIONS MQL5")
     print("=" * 50)
-    print("\n[INFO] UTILISATION:")
-    print("1. Placez votre fichier Excel XML dans le meme dossier")
+    print("\n📋 UTILISATION:")
+    print("1. Placez votre fichier Excel XML dans le même dossier")
     print("2. Modifiez le nom du fichier ci-dessous")
-    print("3. Executez le script")
-    print("\n[INFO] EXEMPLE:")
+    print("3. Exécutez le script")
+    print("\n💡 EXEMPLE:")
 
     # Exemple d'utilisation (à adapter)
-    fichier_excel = "optimizations.xlsx"  # <- CHANGEZ CE NOM
+    fichier_excel = "optimizations.xlsx"  # ← CHANGEZ CE NOM
 
     if os.path.exists(fichier_excel):
-        print(f"[INFO] Chargement de {fichier_excel}...")
+        print(f"📁 Chargement de {fichier_excel}...")
 
         if analyzer.load_excel_xml(fichier_excel):
-            print("[INFO] Filtrage des optimisations profitables...")
+            print("🔄 Filtrage des optimisations profitables...")
             analyzer.filter_profitable_optimizations(min_profit=7000, max_drawdown=7.0)
 
-            print("[INFO] Analyse des variables...")
+            print("📊 Analyse des variables...")
             analyzer.analyze_variables()
 
-            print("[INFO] Recherche des meilleures optimisations...")
+            print("🏆 Recherche des meilleures optimisations...")
             analyzer.find_best_optimizations(top_n=10)
 
-            print("[INFO] Generation du rapport...")
+            print("📄 Génération du rapport...")
             analyzer.generate_report()
             analyzer.save_json_data()
 
-            print("\n[OK] ANALYSE TERMINEE!")
-            print("[INFO] Consultez 'rapport_optimisations_mql5.txt' pour les resultats")
+            print("\n✅ ANALYSE TERMINÉE!")
+            print("📖 Consultez 'rapport_optimisations_mql5.txt' pour les résultats")
     else:
-        print(f"[ERREUR] Fichier '{fichier_excel}' non trouve")
-        print("[INFO] Fichiers Excel disponibles dans le dossier:")
+        print(f"❌ Fichier '{fichier_excel}' non trouvé")
+        print("📁 Fichiers Excel disponibles dans le dossier:")
         excel_files = [f for f in os.listdir('.') if f.endswith(('.xlsx', '.xls', '.xml'))]
         for f in excel_files:
             print(f"   • {f}")
